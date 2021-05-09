@@ -8,7 +8,7 @@ substrate = SubstrateInterface(
     type_registry=load_type_registry_file('custom_types.json'),
 )
 
-block_hash = substrate.get_block_hash(block_id=168570)
+block_hash = substrate.get_block_hash(block_id=169017)
 print(block_hash)
 
 # Retrieve extrinsics in block
@@ -62,22 +62,31 @@ for extrinsic in result['block']['extrinsics']:
 		if txType == 'swap':
 
 			# verify that the swap was a success
-			swapSuccess = False
+			swapSuccess     = False
+
+			inputAssetType  = None
+			outputAssetType = None
+			inputAmount     = None
+			outputAmount    = None
+			feeAmount       = None
+			filterMode      = None
+
 			for event in extrinsicEvents:
+				print(event)
 				if event['event_id'] == 'SwapSuccess':
 					swapSuccess = True
-				print(event)
+
+				elif event['event_id'] == 'Exchange':
+					print("event['params']", event['params'])
+					inputAmount = event['params'][4]['value']
+					outputAmount = event['params'][5]['value']
+					feeAmount = event['params'][6]['value']
 
 			if not swapSuccess:
 				print("FAILED SWAP!")
 				continue
 
-			inputAssetType = None
-			outputAssetType = None
-			inputAmount = None
-			outputAmount = None
-
-			filterMode = None
+			
 
 			for param in exdict['params']:
 				print("param", param)
@@ -96,7 +105,7 @@ for extrinsic in result['block']['extrinsics']:
 					filterMode = 'SMART' if len(param['value']) < 1 else param['value'][0] if len(param['value']) == 1 else param['value']
 					#TODO: handle filterMode here
 
-			print('SWAP', inputAssetType, outputAssetType, inputAmount, outputAmount, filterMode, swapSuccess)
+			print('SWAP', inputAssetType, outputAssetType, inputAmount, outputAmount, filterMode, swapSuccess, feeAmount)
 
 		elif txType == 'withdraw_liquidity':
 			withdrawAsset1Type = None
