@@ -8,7 +8,7 @@ substrate = SubstrateInterface(
     type_registry=load_type_registry_file('custom_types.json'),
 )
 
-block_hash = substrate.get_block_hash(block_id=169017)
+block_hash = substrate.get_block_hash(block_id=169720)
 print(block_hash)
 
 # Retrieve extrinsics in block
@@ -20,8 +20,6 @@ groupedEvents = {}
 for event in events:
 	event = str(event)
 	eventdict = eval(event)
-	# print(eventdict['event_id'])
-	# print(eventdict)
 	idx = eventdict['extrinsic_idx']
 
 	if idx in groupedEvents.keys():
@@ -30,8 +28,8 @@ for event in events:
 		groupedEvents[idx] = [eventdict]
 
 
-print(len(result['block']['extrinsics']))
-print(len(groupedEvents))
+# print(len(result['block']['extrinsics']))
+# print(len(groupedEvents))
 
 print(result)
 print("\n")
@@ -43,10 +41,10 @@ for extrinsic in result['block']['extrinsics']:
 	extrinsicIdx += 1
 
 	exstr = str(extrinsic)
-	print(exstr)
+	# print(exstr)
 	exdict = eval(exstr)
 	print("exdict", exdict)
-	print("extrinsicEvents", extrinsicEvents)
+	# print("extrinsicEvents", extrinsicEvents)
 
 	if 'account_id' in exdict.keys():
 		print('account_id', '0x' + exdict['account_id'])
@@ -72,12 +70,11 @@ for extrinsic in result['block']['extrinsics']:
 			filterMode      = None
 
 			for event in extrinsicEvents:
-				print(event)
+				# print(event)
 				if event['event_id'] == 'SwapSuccess':
 					swapSuccess = True
 
 				elif event['event_id'] == 'Exchange':
-					print("event['params']", event['params'])
 					inputAmount = event['params'][4]['value']
 					outputAmount = event['params'][5]['value']
 					feeAmount = event['params'][6]['value']
@@ -85,8 +82,6 @@ for extrinsic in result['block']['extrinsics']:
 			if not swapSuccess:
 				print("FAILED SWAP!")
 				continue
-
-			
 
 			for param in exdict['params']:
 				print("param", param)
@@ -135,6 +130,63 @@ for extrinsic in result['block']['extrinsics']:
 
 				# if param['name'] == 'input_asset_a':
 				# elif param['name'] == 'input_asset_b':
+
+		elif txType == 'as_multi': #incoming assets from the HASHI bridge
+
+			bridgeSuccess = False
+			assetId       = None
+			bridgedAmt    = None
+			extTxHash     = None #tx hash on the external chain
+
+			for event in extrinsicEvents:
+				print(event)
+
+				if event['event_id'] == 'ExtrinsicSuccess':
+					bridgeSuccess = True
+				elif event['event_id'] == 'Transferred':
+					assetId = event['params'][0]['value']
+					bridgedAmt = event['params'][3]['value']
+				elif event['event_id'] == 'RequestRegistered':
+					extTxHash = event['params'][0]['value']
+
+			if not bridgeSuccess:
+				print("INCOMING BRIDGE TX FAILURE")
+				continue
+
+			print("INCOMING BRIDGE", assetId, bridgedAmt, extTxHash, bridgeSuccess)
+
+			# for param in exdict['params']:
+			# 	print("param", param)
+			# 	if param['name'] == 'input_asset_a':
+		elif txType == 'transfer_to_sidechain': #outgoing assets across the HASHI bridge
+
+			bridgeSuccess   = False
+			outoingAssetId  = None
+			outoingAssetAmt = None
+			extAddress      = None
+			extType         = None
+
+			for param in exdict['params']:
+				print("param", param)
+
+				if param['name'] == 'asset_id':
+					outoingAssetId = param['value']
+				elif param['name'] == 'amount':
+					outoingAssetAmt = param['value']
+				elif param['name'] == 'to':
+					extType = param['type']
+					extAddress = param['value']
+
+			for event in extrinsicEvents: #TODO: should add logic here to collec the tx fee data
+
+				if event['event_id'] == 'ExtrinsicSuccess':
+					bridgeSuccess = True
+
+			if not bridgeSuccess:
+				print("OUTGOING BRIDGE TX FAILURE")
+				continue
+
+			print("OUTOING BRIDGE", outoingAssetId, outoingAssetAmt, extType, extAddress, bridgeSuccess)
 
 
 
