@@ -8,23 +8,45 @@ substrate = SubstrateInterface(
     type_registry=load_type_registry_file('custom_types.json'),
 )
 
-block_hash = substrate.get_block_hash(block_id=165980)
+block_hash = substrate.get_block_hash(block_id=168570)
 print(block_hash)
 
 # Retrieve extrinsics in block
 result = substrate.get_runtime_block(block_hash=block_hash, ignore_decoding_errors=True)
+events = substrate.get_events(block_hash)
+
+
+groupedEvents = {}
+for event in events:
+	event = str(event)
+	eventdict = eval(event)
+	# print(eventdict['event_id'])
+	# print(eventdict)
+	idx = eventdict['extrinsic_idx']
+
+	if idx in groupedEvents.keys():
+		groupedEvents[idx].append(eventdict)
+	else:
+		groupedEvents[idx] = [eventdict]
+
+
+print(len(result['block']['extrinsics']))
+print(len(groupedEvents))
 
 print(result)
 print("\n")
 
-# metadata = substrate.get_runtime_metadata(block_hash=block_hash)
-# print("metadata", metadata)
-
+extrinsicIdx = 0
 for extrinsic in result['block']['extrinsics']:
+
+	extrinsicEvents = groupedEvents[extrinsicIdx]
+	extrinsicIdx += 1
+
 	exstr = str(extrinsic)
 	print(exstr)
 	exdict = eval(exstr)
-	print(exdict)
+	print("exdict", exdict)
+	print("extrinsicEvents", extrinsicEvents)
 
 	if 'account_id' in exdict.keys():
 		print('account_id', '0x' + exdict['account_id'])
@@ -38,6 +60,18 @@ for extrinsic in result['block']['extrinsics']:
 		print('tx type', txType)
 
 		if txType == 'swap':
+
+			# verify that the swap was a success
+			swapSuccess = False
+			for event in extrinsicEvents:
+				if event['event_id'] == 'SwapSuccess':
+					swapSuccess = True
+				print(event)
+
+			if not swapSuccess:
+				print("FAILED SWAP!")
+				continue
+
 			inputAssetType = None
 			outputAssetType = None
 			inputAmount = None
@@ -62,7 +96,7 @@ for extrinsic in result['block']['extrinsics']:
 					filterMode = 'SMART' if len(param['value']) < 1 else param['value'][0] if len(param['value']) == 1 else param['value']
 					#TODO: handle filterMode here
 
-			print('SWAP', inputAssetType, outputAssetType, inputAmount, outputAmount, filterMode)
+			print('SWAP', inputAssetType, outputAssetType, inputAmount, outputAmount, filterMode, swapSuccess)
 
 		elif txType == 'withdraw_liquidity':
 			withdrawAsset1Type = None
@@ -97,6 +131,4 @@ for extrinsic in result['block']['extrinsics']:
 
 	print('')
 
-events = substrate.get_events(block_hash)
-for event in events:
-	print(event)
+
