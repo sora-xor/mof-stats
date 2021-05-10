@@ -8,7 +8,7 @@ substrate = SubstrateInterface(
     type_registry=load_type_registry_file('custom_types.json'),
 )
 
-block_hash = substrate.get_block_hash(block_id=183379)
+block_hash = substrate.get_block_hash(block_id=183699)
 print(block_hash)
 
 # Retrieve extrinsics in block
@@ -145,9 +145,9 @@ for extrinsic in result['block']['extrinsics']:
 
 				if event['event_id'] == 'ExtrinsicSuccess':
 					bridgeSuccess = True
-				elif event['event_id'] == 'Transferred':
+				elif event['event_id'] == 'Deposited':
 					assetId = event['params'][0]['value']
-					bridgedAmt = event['params'][3]['value']
+					bridgedAmt = event['params'][2]['value']
 				elif event['event_id'] == 'RequestRegistered':
 					extTxHash = event['params'][0]['value']
 
@@ -221,6 +221,30 @@ for extrinsic in result['block']['extrinsics']:
 					rewards.append((acctId, rewardAmt))
 
 			print("BATCH STAKING REWARDS", rewards)
+
+		elif txType == 'transfer':
+			transferSuccess = False
+			transferAssetId = None
+			transferAmt     = None
+			xorFeePaid      = None
+
+			for event in extrinsicEvents:
+
+				if event['event_id'] == 'ExtrinsicSuccess':
+					transferSuccess = True
+				elif event['event_id'] == 'FeeWithdrawn':
+					xorFeePaid = event['params'][1]['value']
+				elif event['event_id'] == 'Transferred' and event['event_idx'] == 2:
+					transferAssetId  = event['params'][0]['value']
+					transferAmt = event['params'][3]['value']
+
+			if not transferSuccess:
+				print("TRANSFER TX FAILURE")
+				continue
+
+			print("TRANSFER", transferAssetId, transferAmt, transferSuccess, xorFeePaid)
+
+
 	print('')
 
 
