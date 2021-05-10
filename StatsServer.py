@@ -8,7 +8,7 @@ substrate = SubstrateInterface(
     type_registry=load_type_registry_file('custom_types.json'),
 )
 
-block_hash = substrate.get_block_hash(block_id=182769)
+block_hash = substrate.get_block_hash(block_id=183286)
 print(block_hash)
 
 # Retrieve extrinsics in block
@@ -211,8 +211,17 @@ for extrinsic in result['block']['extrinsics']:
 
 			print("CLAIM", assetId, assetAmt, claimSuccess, xorFeePaid)
 
+		elif txType == 'batch':
+			rewards = []
 
+			for event in extrinsicEvents:
+				print(event)
+				if event['event_id'] == 'Reward':
+					acctId = event['params'][0]['value']
+					rewardAmt = event['params'][1]['value']
+					rewards.append((acctId, rewardAmt))
 
+			print("BATCH STAKING REWARDS", rewards)
 	print('')
 
 
