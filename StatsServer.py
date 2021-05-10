@@ -8,7 +8,7 @@ substrate = SubstrateInterface(
     type_registry=load_type_registry_file('custom_types.json'),
 )
 
-block_hash = substrate.get_block_hash(block_id=169720)
+block_hash = substrate.get_block_hash(block_id=182769)
 print(block_hash)
 
 # Retrieve extrinsics in block
@@ -187,6 +187,29 @@ for extrinsic in result['block']['extrinsics']:
 				continue
 
 			print("OUTOING BRIDGE", outoingAssetId, outoingAssetAmt, extType, extAddress, bridgeSuccess)
+
+		elif txType == 'claim':
+			claimSuccess = False
+			assetId      = None
+			assetAmt     = None
+			xorFeePaid   = None
+
+			for event in extrinsicEvents:
+				print(event)
+
+				if event['event_id'] == 'ExtrinsicSuccess':
+					claimSuccess = True
+				elif event['event_id'] == 'Transferred' and event['event_idx'] == 1:
+					assetId = event['params'][0]['value']
+					assetAmt = event['params'][3]['value']
+				elif event['event_id'] == 'FeeWithdrawn':
+					xorFeePaid = event['params'][1]['value']
+
+			if not claimSuccess:
+				print("CLAIM TX FAILURE")
+				continue
+
+			print("CLAIM", assetId, assetAmt, claimSuccess, xorFeePaid)
 
 
 
