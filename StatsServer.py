@@ -8,7 +8,7 @@ substrate = SubstrateInterface(
     type_registry=load_type_registry_file('custom_types.json'),
 )
 
-block_hash = substrate.get_block_hash(block_id=183286)
+block_hash = substrate.get_block_hash(block_id=183379)
 print(block_hash)
 
 # Retrieve extrinsics in block
@@ -66,25 +66,27 @@ for extrinsic in result['block']['extrinsics']:
 			outputAssetType = None
 			inputAmount     = None
 			outputAmount    = None
-			feeAmount       = None
+			swapFeeAmount   = None
 			filterMode      = None
+			xorFee          = None
 
 			for event in extrinsicEvents:
-				# print(event)
 				if event['event_id'] == 'SwapSuccess':
 					swapSuccess = True
 
 				elif event['event_id'] == 'Exchange':
 					inputAmount = event['params'][4]['value']
 					outputAmount = event['params'][5]['value']
-					feeAmount = event['params'][6]['value']
+					swapFeeAmount = event['params'][6]['value']
+
+				elif event['event_id'] == 'FeeWithdrawn':
+					xorFee = event['params'][1]['value']
 
 			if not swapSuccess:
 				print("FAILED SWAP!")
 				continue
 
 			for param in exdict['params']:
-				print("param", param)
 				if param['name'] == 'input_asset_id':
 					inputAssetType = param['value']
 				elif param['name'] == 'output_asset_id':
@@ -100,7 +102,7 @@ for extrinsic in result['block']['extrinsics']:
 					filterMode = 'SMART' if len(param['value']) < 1 else param['value'][0] if len(param['value']) == 1 else param['value']
 					#TODO: handle filterMode here
 
-			print('SWAP', inputAssetType, outputAssetType, inputAmount, outputAmount, filterMode, swapSuccess, feeAmount)
+			print('SWAP', inputAssetType, outputAssetType, inputAmount, outputAmount, filterMode, swapSuccess, swapFeeAmount, xorFee)
 
 		elif txType == 'withdraw_liquidity':
 			withdrawAsset1Type = None
@@ -195,8 +197,6 @@ for extrinsic in result['block']['extrinsics']:
 			xorFeePaid   = None
 
 			for event in extrinsicEvents:
-				print(event)
-
 				if event['event_id'] == 'ExtrinsicSuccess':
 					claimSuccess = True
 				elif event['event_id'] == 'Transferred' and event['event_idx'] == 1:
@@ -215,7 +215,6 @@ for extrinsic in result['block']['extrinsics']:
 			rewards = []
 
 			for event in extrinsicEvents:
-				print(event)
 				if event['event_id'] == 'Reward':
 					acctId = event['params'][0]['value']
 					rewardAmt = event['params'][1]['value']
