@@ -8,7 +8,7 @@ substrate = SubstrateInterface(
     type_registry=load_type_registry_file('custom_types.json'),
 )
 
-block_hash = substrate.get_block_hash(block_id=183839)
+block_hash = substrate.get_block_hash(block_id=184001)
 print(block_hash)
 
 # Retrieve extrinsics in block
@@ -259,6 +259,24 @@ for extrinsic in result['block']['extrinsics']:
 				continue
 
 			print("TRANSFER", transferAssetId, transferAmt, transferSuccess, xorFeePaid)
+
+		elif txType == 'batch_all': # for bonding/unbonding stake
+			batchSuccess = False
+			batchType    = None
+			batchAmt     = None
+			xorFeePaid   = None
+
+			for event in extrinsicEvents:
+
+				if event['event_id'] == 'ExtrinsicSuccess':
+					batchSuccess = True
+				elif event['event_id'] == 'Bonded':
+					batchType = "BOND STAKE"
+					batchAmt  = event['params'][1]['value']
+				elif event['event_id'] == 'FeeWithdrawn':
+					xorFeePaid = event['params'][1]['value']
+
+			print(batchType, batchAmt, batchSuccess, xorFeePaid)
 
 
 	print('')
