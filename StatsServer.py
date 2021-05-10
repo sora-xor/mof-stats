@@ -8,7 +8,7 @@ substrate = SubstrateInterface(
     type_registry=load_type_registry_file('custom_types.json'),
 )
 
-block_hash = substrate.get_block_hash(block_id=183699)
+block_hash = substrate.get_block_hash(block_id=183839)
 print(block_hash)
 
 # Retrieve extrinsics in block
@@ -120,18 +120,34 @@ for extrinsic in result['block']['extrinsics']:
 				elif param['name'] == 'output_b_min':
 					withdrawAsset2Amount = param['value']
 
-			print("WIDTHDRAW LIQUIDITY", withdrawAsset1Type, withdrawAsset2Type, withdrawAsset1Amount, withdrawAsset2Amount)
+			print("WITHDRAW LIQUIDITY", withdrawAsset1Type, withdrawAsset2Type, withdrawAsset1Amount, withdrawAsset2Amount)
 
 		elif txType == 'deposit_liquidity':
-			for param in exdict['params']:
-				print("param", param)
-				depositAsset1Type = None
-				depositAsset2Type = None
-				depositAsset1Amount = None
-				depositAsset2Amount = None
+			depositSuccess      = False
+			depositAsset1Id     = None
+			depositAsset2Id     = None
+			depositAsset1Amount = None
+			depositAsset2Amount = None
+			xorFeePaid          = None
 
-				# if param['name'] == 'input_asset_a':
-				# elif param['name'] == 'input_asset_b':
+			for event in extrinsicEvents:
+
+				if event['event_id'] == 'ExtrinsicSuccess':
+					depositSuccess = True
+				elif event['event_id'] == 'Transferred' and event['event_idx'] == 2:
+					depositAsset1Id = event['params'][0]['value']
+					depositAsset1Amount = event['params'][3]['value']
+				elif event['event_id'] == 'Transferred' and event['event_idx'] == 3:
+					depositAsset2Id = event['params'][0]['value']
+					depositAsset2Amount = event['params'][3]['value']
+				elif event['event_id'] == 'FeeWithdrawn':
+					xorFeePaid = event['params'][1]['value']
+			
+			if not depositSuccess:
+				print("DEPOSIT LIQUIDITY TX FAILURE")
+				continue
+
+			print("DEPOSIT LIQUIDITY", depositAsset1Id, depositAsset1Amount, depositAsset2Id, depositAsset2Amount, depositSuccess, xorFeePaid)
 
 		elif txType == 'as_multi': #incoming assets from the HASHI bridge
 
