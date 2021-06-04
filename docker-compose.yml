@@ -1,0 +1,33 @@
+version: "3.9"  # optional since v1.27.0
+volumes:
+  chain:
+
+services:
+  postgres:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: "${DB_NAME}"
+      POSTGRES_USER: "${DB_USER}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD}"
+    ports:
+      - "127.0.0.1:5432:5432"
+  mysql:
+    image: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_USER: "${DB_USER}"
+      MYSQL_DATABASE: "${DB_NAME}"
+      MYSQL_PASSWORD: "${DB_PASSWORD}"
+      MYSQL_RANDOM_ROOT_PASSWORD: 1
+    ports:
+      - "127.0.0.1:3306:3306"
+  substrate:
+    image: sora2/substrate:1.0.0
+    ports:
+      - "127.0.0.1:9933:9933"
+      - "127.0.0.1:9944:9944"
+    volumes:
+      - chain:/chain
+    command: --name sora2-node --chain main --base-path /chain --unsafe-ws-external --unsafe-rpc-external --execution Wasm --pruning archive
