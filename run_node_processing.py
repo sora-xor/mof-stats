@@ -1,10 +1,12 @@
+import argparse
 import asyncio
 from dataclasses import asdict
 
 import decouple
 import pandas as pd
+import requests
 from scalecodec.type_registry import load_type_registry_file
-from sqlalchemy import func
+from sqlalchemy import and_, func, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.future import select
@@ -100,21 +102,27 @@ def run_event_parser(start_block=0, num_blocks=1000):
 async def get_or_create_asset(session, assets, hash):
     if hash in assets:
         return assets[hash]
-    a = Asset(hash=hash)
+    data = requests.get('https://sorascan.com/api/v1/asset/' +
+                        hash).json()['data']['attributes']
+    a = Asset(hash=hash,
+              id=data['id'],
+              name=data['name'],
+              symbol=data['symbol'],
+              precision=data['precision'])
     session.add(a)
     await session.commit()
     assets[hash] = a
     return a
 
 
-async def async_main():
+async def async_main(clean=False):
     engine = create_async_engine(
         decouple.config('DATABASE_URL'),
         echo=DEBUG,
     )
     # create tables if neccessary
     async with engine.begin() as conn:
-        if DEBUG:
+        if clean:
             await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     # expire_on_commit=False will prevent attributes from being expired
@@ -181,7 +189,27 @@ async def async_main():
                 pending = session.commit()
         if pending:
             await pending
+        # update trade_volume stats
+        last_24h = (await session.execute(select(func.max(Swap.timestamp))
+                                          )).scalar() - 24 * 3600
+        await session.execute(
+            update(Asset).values(
+                trade_volume=select(func.sum(Swap.asset1_amount)).where(
+                    and_(Swap.asset1_id == Asset.id,
+                         Swap.timestamp > last_24h)).scalar_subquery() +
+                select(func.sum(Swap.asset2_amount)).where(
+                    and_(Swap.asset2_id == Asset.id,
+                         Swap.timestamp > last_24h)).scalar_subquery()))
+        await session.commit()
 
 
 if __name__ == "__main__":
-    asyncio.run(async_main())
+    parser = argparse.ArgumentParser(
+        description='Import swap history from Substrate node into DB.')
+    parser.add_argument(
+        '--clean',
+        '-c',
+        action='store_true',
+        help='clean (drop) and re-create database tables before import')
+    args = parser.parse_args()
+    asyncio.run(async_main(args.clean))
