@@ -10,7 +10,10 @@ class Asset(Base):
 
     id = Column(Integer, primary_key=True)
     hash = Column(String(66), unique=True, nullable=False)
-    name = Column(String(128))
+    symbol = Column(String(8), nullable=False)
+    name = Column(String(128), nullable=False)
+    precision = Column(Integer, nullable=False)
+    trade_volume = Column(Float)
 
 
 class Swap(Base):
@@ -22,8 +25,8 @@ class Swap(Base):
     xor_fee = Column(Numeric(20), nullable=False)
     asset1_id = Column(ForeignKey("asset.id"), nullable=False)
     asset2_id = Column(ForeignKey("asset.id"), nullable=False)
-    asset1_amount = Column(Numeric(26), nullable=False)
-    asset2_amount = Column(Numeric(26), nullable=False)
+    asset1_amount = Column(Numeric(33), nullable=False)
+    asset2_amount = Column(Numeric(33), nullable=False)
     price = Column(Float)
     filter_mode = Column(String(32), nullable=False)
-    swap_fee_amount = Column(Numeric(20), nullable=False)
+    swap_fee_amount = Column(Numeric(21))
