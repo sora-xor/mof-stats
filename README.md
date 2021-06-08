@@ -89,6 +89,29 @@ Assuming DB in PostgreSQL running at 1.1.1.1 and archive Substrate node is runni
 env DATABASE_URL=postgresql+asyncpg://user:password@1.1.1.1/dbname SUBSTRATE_URL=ws://2.2.2.2:9944 venv/bin/python run_node_processing.py
 ```
 
+### Runing web server
+
+After import is done it is possible to run web server serving last pair prices:
+```bash
+venv/bin/python webapp.py
+```
+
+```bash
+$ curl -s localhost:8888|jq|head -n12
+{
+  "0x0200000000000000000000000000000000000000000000000000000000000000_0x0200060000000000000000000000000000000000000000000000000000000000": {
+    "base_id": "0x0200060000000000000000000000000000000000000000000000000000000000",
+    "base_name": "Dai",
+    "base_symbol": "DAI",
+    "quote_id": "0x0200000000000000000000000000000000000000000000000000000000000000",
+    "quote_name": "SORA",
+    "quote_symbol": "XOR",
+    "last_price": 0.001537295942369473,
+    "base_volume": "2910264628433435323",
+    "quote_volume": "1893397842998926724472"
+  },
+```
+
 ### Benchmarks
 
 #### Importing first 30,000 blocks to PostgreSQL
