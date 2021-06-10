@@ -1,8 +1,19 @@
-from sqlalchemy import (BigInteger, Column, Float, ForeignKey, Integer,
+import decouple
+from sqlalchemy import (BigInteger, Column, Float, ForeignKey, Index, Integer,
                         Numeric, String)
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import declarative_base
 
+DEBUG = decouple.config('DEBUG', default=False, cast=bool)
+
 Base = declarative_base()
+
+
+def get_db_engine():
+    return create_async_engine(
+        decouple.config('DATABASE_URL'),
+        echo=DEBUG,
+    )
 
 
 class Asset(Base):
@@ -30,3 +41,6 @@ class Swap(Base):
     price = Column(Float)
     filter_mode = Column(String(32), nullable=False)
     swap_fee_amount = Column(Numeric(21))
+
+
+Index('idx_swap_asset1_id_asset2_id', Swap.asset1_id, Swap.asset2_id)

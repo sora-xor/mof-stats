@@ -1,24 +1,22 @@
 import argparse
 import asyncio
 from dataclasses import asdict
+from time import sleep
 
 import decouple
-import pandas as pd
 import requests
 from scalecodec.type_registry import load_type_registry_file
 from sqlalchemy import and_, func, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import sessionmaker
 from substrateinterface import SubstrateInterface
 from tqdm import trange
 
-from models import Asset, Base, Swap
+from models import Asset, Base, Swap, get_db_engine
 from processing import (get_processing_functions, get_timestamp,
                         should_be_processed)
-
-DEBUG = decouple.config('DEBUG', default=False, cast=bool)
 
 
 def connect_to_substrate_node():
@@ -77,28 +75,6 @@ def process_events(dataset, new_map, result, grouped_events):
                     dataset.append(asdict(tx))
 
 
-def run_event_parser(start_block=0, num_blocks=1000):
-    substrate = connect_to_substrate_node()
-    if not substrate:
-        exit()
-    dataset = []
-
-    selected_events = {'swap'}
-    func_map = get_processing_functions()
-    if not selected_events:
-        selected_events = set(func_map.keys())
-    new_map = dict(filter(lambda x: x[0] in selected_events, func_map.items()))
-
-    for k in range(start_block, start_block + num_blocks):
-        res, events = get_events_from_block(substrate, k)
-        process_events(dataset, new_map, res, events)
-    # We push data to pandas and save as csv.
-    ds = pd.DataFrame(dataset).set_index('id')
-    ds.to_csv('dataset.csv')
-
-    # TODO: add analytics on pandas dataframe and write it in redis
-
-
 async def get_or_create_asset(session, assets, hash):
     if hash in assets:
         return assets[hash]
@@ -115,11 +91,8 @@ async def get_or_create_asset(session, assets, hash):
     return a
 
 
-async def async_main(clean=False):
-    engine = create_async_engine(
-        decouple.config('DATABASE_URL'),
-        echo=DEBUG,
-    )
+async def async_main(clean=False, silent=False):
+    engine = get_db_engine()
     # create tables if neccessary
     async with engine.begin() as conn:
         if clean:
@@ -152,8 +125,9 @@ async def async_main(clean=False):
             begin = 1
         # sync from last block in the DB to last block in the chain
         pending = None
-        print('Importing from', begin, 'to', end)
-        for block in trange(begin, end):
+        if not silent:
+            print('Importing from', begin, 'to', end)
+        for block in (range if silent else trange)(begin, end):
             # get events from <block> to <dataset>
             dataset = []
             res, events = get_events_from_block(substrate, block)
@@ -211,5 +185,22 @@ if __name__ == "__main__":
         '-c',
         action='store_true',
         help='clean (drop) and re-create database tables before import')
+    parser.add_argument('--silent',
+                        '-s',
+                        action='store_true',
+                        help='print no output except errors')
+    parser.add_argument('--follow',
+                        '-f',
+                        action='store_true',
+                        help='continiously poll for new blocks')
     args = parser.parse_args()
-    asyncio.run(async_main(args.clean))
+    if args.follow:
+        # in follow mode import new blocks then sleep for 1 minute
+        # then import again in a loop
+        while True:
+            asyncio.run(async_main(args.clean, args.silent))
+            if not args.silent:
+                print('Waiting for new blocks')
+            sleep(60)
+    else:
+        asyncio.run(async_main(args.clean, args.silent))
