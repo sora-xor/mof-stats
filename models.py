@@ -44,3 +44,5 @@ class Swap(Base):
 
 
 Index('idx_swap_asset1_id_asset2_id', Swap.asset1_id, Swap.asset2_id)
+Index('idx_swap_asset1_id_asset2_id_timestamp_desc', Swap.asset1_id,
+      Swap.asset2_id, Swap.timestamp.desc())

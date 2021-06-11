@@ -35,6 +35,27 @@ class MainHandler(tornado.web.RequestHandler):
             assets = {}
             for a, in await session.execute(select(Asset)):
                 assets[a.id] = a
+            # obtain last prices
+            prices = session.execute(
+                select(Swap.__table__.c.asset1_id, Swap.__table__.c.asset2_id,
+                       Swap.__table__.c.price).distinct(
+                           Swap.__table__.c.asset1_id,
+                           Swap.__table__.c.asset2_id,
+                       ).order_by(Swap.__table__.c.asset1_id,
+                                  Swap.__table__.c.asset2_id,
+                                  Swap.__table__.c.timestamp.desc()))
+            # get trade volumes over last 24 hours if exists
+            # (sum(amount) from swap table)
+            volumes = session.execute(
+                select(
+                    Swap.__table__.c.asset1_id,
+                    Swap.__table__.c.asset2_id,
+                    func.sum(Swap.__table__.c.asset1_amount),
+                    func.sum(Swap.__table__.c.asset2_amount),
+                ).where(Swap.__table__.c.timestamp > last_24h).group_by(
+                    Swap.__table__.c.asset1_id,
+                    Swap.__table__.c.asset2_id,
+                ))
             # build list of all asset pairs
             pairs = {}
             for a1id, a2id in await session.execute(
@@ -54,30 +75,16 @@ class MainHandler(tornado.web.RequestHandler):
                     "base_volume": 0,
                     "quote_volume": 0,
                 }
-            # get trade volumes over last 24 hours if exists
-            # (sum(amount) from swap table)
-            for a1id, a2id, a1vol, a2vol in await session.execute(
-                    select(
-                        Swap.__table__.c.asset1_id,
-                        Swap.__table__.c.asset2_id,
-                        func.sum(Swap.__table__.c.asset1_amount),
-                        func.sum(Swap.__table__.c.asset2_amount),
-                    ).where(Swap.__table__.c.timestamp > last_24h).group_by(
-                        Swap.__table__.c.asset1_id,
-                        Swap.__table__.c.asset2_id,
-                    )):
-                pairs[a1.hash + "_" + a2.hash]["base_volume"] = int(a1vol)
-                pairs[a1.hash + "_" + a2.hash]["quote_volume"] = int(a2vol)
-            # obtain last prices
-            for a1id, a2id, last_price in await session.execute(
-                    select(Swap.__table__.c.asset1_id,
-                           Swap.__table__.c.asset2_id,
-                           Swap.__table__.c.price).distinct(
-                               Swap.__table__.c.asset1_id,
-                               Swap.__table__.c.asset2_id,
-                           ).order_by(Swap.__table__.c.asset1_id,
-                                      Swap.__table__.c.asset2_id,
-                                      Swap.__table__.c.timestamp.desc())):
+            # fill volumes
+            for a1id, a2id, a1vol, a2vol in await volumes:
+                pairs[assets[a1id].hash + "_" + assets[a2id].hash].update({
+                    "base_volume":
+                    int(a1vol),
+                    "quote_volume":
+                    int(a2vol),
+                })
+            # fill prices
+            for a1id, a2id, last_price in await prices:
                 pairs[assets[a1id].hash + "_" +
                       assets[a2id].hash]['last_price'] = last_price
         self.set_header('Content-Type', 'application/json')
