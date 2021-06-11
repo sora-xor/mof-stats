@@ -79,9 +79,9 @@ class MainHandler(tornado.web.RequestHandler):
             for a1id, a2id, a1vol, a2vol in await volumes:
                 pairs[assets[a1id].hash + "_" + assets[a2id].hash].update({
                     "base_volume":
-                    int(a1vol),
-                    "quote_volume":
                     int(a2vol),
+                    "quote_volume":
+                    int(a1vol),
                 })
             # fill prices
             for a1id, a2id, last_price in await prices:
@@ -95,7 +95,7 @@ class PairHandler(tornado.web.RequestHandler):
     """
     Provides information about specific pairs.
     """
-    async def get(self, asset1, asset2):
+    async def get(self, asset2, asset1):
         async with async_session() as session:
             last_24h = session.execute(select(func.max(Swap.timestamp)))
             # lookup assets by symbol
@@ -150,8 +150,8 @@ class PairHandler(tornado.web.RequestHandler):
                 "quote_name": a1.name,
                 "quote_symbol": a1.symbol,
                 "last_price": price,
-                "base_volume": int(a1vol or 0),
-                "quote_volume": int(a2vol or 0)
+                "base_volume": int(a2vol or 0),
+                "quote_volume": int(a1vol or 0)
             }
         self.set_header('Content-Type', 'application/json')
         self.write(json.dumps(response))
