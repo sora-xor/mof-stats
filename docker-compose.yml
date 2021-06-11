@@ -30,4 +30,18 @@ services:
       - "127.0.0.1:9944:9944"
     volumes:
       - chain:/chain
-    command: --name sora2-node --chain main --base-path /chain --unsafe-ws-external --unsafe-rpc-external --execution Wasm --pruning archive
+    command: --name sora2-node --chain main --base-path /chain --unsafe-ws-external --unsafe-rpc-external --execution Wasm --pruning archive --rpc-cors all
+  import:
+    build: .
+    scale: 0
+    depends_on:
+      - "postgres"
+      - "substrate"
+    command: "env SUBSTRATE_URL=ws://substrate:9944 DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@postgres/${DB_NAME} python run_node_processing.py"
+  web:
+    build: .
+    depends_on:
+      - "postgres"
+    ports:
+      - "80:8888"
+    command: "env DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@postgres/${DB_NAME} python webapp.py"
