@@ -1,4 +1,4 @@
-version: "3.9"  # optional since v1.27.0
+version: "3.4"  # optional since v1.27.0
 volumes:
   chain:
 
@@ -31,13 +31,22 @@ services:
     volumes:
       - chain:/chain
     command: --name sora2-node --chain main --base-path /chain --unsafe-ws-external --unsafe-rpc-external --execution Wasm --pruning archive --rpc-cors all
+    healthcheck:
+      test: >-
+        curl -H 'Content-Type: application/json' -d '{"id": 1, "jsonrpc": "2.0", "method": "system_health", "params": []}' 127.0.0.1:9933 | grep -E 'result'
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 300s
   import:
     build: .
     scale: 0
     depends_on:
-      - "postgres"
-      - "substrate"
-    command: "env SUBSTRATE_URL=ws://substrate:9944 DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@postgres/${DB_NAME} python run_node_processing.py"
+      postgres:
+        condition: service_started
+      substrate:
+        condition: service_healthy
+    command: "env SUBSTRATE_URL=ws://substrate:9944 DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@postgres/${DB_NAME} python run_node_processing.py -f"
   web:
     build: .
     depends_on:
