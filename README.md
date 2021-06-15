@@ -26,8 +26,10 @@ EOF
 
 3. Run all services
 ```bash
-docker-compose up --scale import=1
+docker-compose up
 ```
+
+4. Web server with price data will be available at http://localhost/
 
 ### Option 2: Run Substrate node & DB in docker but import script natively
 
@@ -39,23 +41,12 @@ cd mof-stats/
 
 2. Create `.env` file with DB connection settings:
 
-Option 2.1. to import into PostgreSQL
 ```bash
 cat > .env <<EOF
 DB_NAME=sora
 DB_USER=sora
 DB_PASSWORD=secret
 DATABASE_URL=postgresql+asyncpg://sora:secret@localhost/sora
-EOF
-```
-
-Option 2.2. to import into MySQL
-```bash
-cat > .env <<EOF
-DB_NAME=sora
-DB_USER=sora
-DB_PASSWORD=secret
-DATABASE_URL=mysql+aiomysql://sora:secret@localhost/sora
 EOF
 ```
 
@@ -67,7 +58,7 @@ venv/bin/pip install -r requirements.txt
 
 4. Run Substrate node & DB server
 ```bash
-docker-compose up
+docker-compose up substrate postgresql
 ```
 
 5. Wait for some time until node synchronizes...

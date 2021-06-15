@@ -12,17 +12,6 @@ services:
       POSTGRES_PASSWORD: "${DB_PASSWORD}"
     ports:
       - "127.0.0.1:5432:5432"
-  mysql:
-    image: mysql
-    command: --default-authentication-plugin=mysql_native_password
-    restart: always
-    environment:
-      MYSQL_USER: "${DB_USER}"
-      MYSQL_DATABASE: "${DB_NAME}"
-      MYSQL_PASSWORD: "${DB_PASSWORD}"
-      MYSQL_RANDOM_ROOT_PASSWORD: 1
-    ports:
-      - "127.0.0.1:3306:3306"
   substrate:
     image: sora2/substrate:1.0.0
     ports:
@@ -30,7 +19,7 @@ services:
       - "127.0.0.1:9944:9944"
     volumes:
       - chain:/chain
-    command: --name sora2-node --chain main --base-path /chain --unsafe-ws-external --unsafe-rpc-external --execution Wasm --pruning archive --rpc-cors all
+    command: --name sora2-node --chain main --base-path /chain --unsafe-ws-external --unsafe-rpc-external --pruning archive --rpc-cors all
     healthcheck:
       test: >-
         curl -H 'Content-Type: application/json' -d '{"id": 1, "jsonrpc": "2.0", "method": "system_health", "params": []}' 127.0.0.1:9933 | grep -E 'result'
@@ -40,7 +29,6 @@ services:
       start_period: 300s
   import:
     build: .
-    scale: 0
     depends_on:
       postgres:
         condition: service_started
