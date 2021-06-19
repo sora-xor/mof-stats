@@ -16,11 +16,32 @@ class getToken(tornado.web.RequestHandler):
 
 class QtyHandler(tornado.web.RequestHandler):
     def get(self, symbol):
-        data = '{"id":1, "jsonrpc":"2.0", "method": "assets_totalSupply", "params":["0x0200000000000000000000000000000000000000000000000000000000000000"]}'
-        response = requests.post(server, headers=headers, data=data)
-        balance = json.loads(response.content)['result']['balance']
-        balance = balance[:-18] + '.' + balance[-18:]
-        self.write(balance)
+        if symbol == 'pswap':
+            data = '{"id":1, "jsonrpc":"2.0", "method": "assets_totalSupply", "params":["0x0200050000000000000000000000000000000000000000000000000000000000"]}'
+            response = requests.post(server, headers=headers, data=data)
+            balance = json.loads(response.content)['result']['balance']
+            
+        
+            tbcRewardsData = '{"id":1, "jsonrpc":"2.0", "method": "assets_freeBalance", "params":["cnTQ1kbv7PBNNQrEb1tZpmK7easBTbiFMQUUwfLf9LX66ND8u","0x0200050000000000000000000000000000000000000000000000000000000000"]}'
+            tbcRewardsResponse = requests.post(server, headers=headers, data=tbcRewardsData)
+            tbcRewardsBalance = json.loads(tbcRewardsResponse.content)['result']['balance']
+
+            marketMakerData = '{"id":1, "jsonrpc":"2.0", "method": "assets_freeBalance", "params":["cnTQ1kbv7PBNNQrEb1tZpmK7fJT4Awahg1d8aoYoGGv2ATz7m","0x0200050000000000000000000000000000000000000000000000000000000000"]}'
+            marketMakerResponse = requests.post(server, headers=headers, data=marketMakerData)
+            marketMakerBalance = json.loads(marketMakerResponse.content)['result']['balance']
+
+            balance = int(balance) - int(tbcRewardsBalance) - int(marketMakerBalance)
+            balance = str(balance)
+
+            balance = balance[:-18] + '.' + balance[-18:]
+            self.write(balance)
+        else:
+            data = '{"id":1, "jsonrpc":"2.0", "method": "assets_totalSupply", "params":["0x0200000000000000000000000000000000000000000000000000000000000000"]}'
+        
+            response = requests.post(server, headers=headers, data=data)
+            balance = json.loads(response.content)['result']['balance']
+            balance = balance[:-18] + '.' + balance[-18:]
+            self.write(balance)
 
 application = tornado.web.Application([
     (r'/', getToken),
